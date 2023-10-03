@@ -21,6 +21,14 @@ app.get('/', (req, res) => {
     res.sendFile('login.html', { root: clientPath });
 });
 
+app.get('/panel', (req, res) => {
+    res.sendFile('panel.html', { root: clientPath });
+});
+
+app.get('/user', (req, res) => {
+    res.sendFile('user.html', { root: clientPath });
+});
+
 // Підключення до MongoDb
 mongoose.connect(`mongodb+srv://arturlisovic:${DB_PASSWORD}@cluster0.hdbgfgy.mongodb.net/?retryWrites=true&w=majority`, {
     useNewUrlParser: true,
@@ -35,7 +43,6 @@ mongoose.connect(`mongodb+srv://arturlisovic:${DB_PASSWORD}@cluster0.hdbgfgy.mon
 
 const db = mongoose.connection;
 
-
 // Створення схем і моделей
 const userSchema = new mongoose.Schema({
     userLogin_fromClient: String,
@@ -48,38 +55,13 @@ const orderSchema = new mongoose.Schema({
     price: String,
     client: String,
     orderID: String,
+    count: Number,
+    img: String,
     orderTime: String
 });
 
 const User = mongoose.model('User', userSchema);
 const Order = mongoose.model('Order', orderSchema);
-
-
-// Замовлення з клієнта
-let orders_fromClient = [
-    {
-        good: 'Pizza',
-        price: 24,
-        client: 'Vitalik',
-        orderID: 'A9B1C4',
-        orderTime: '09:39, 17.09.2023'
-    },
-    {
-        good: 'Burger',
-        price: 12,
-        client: 'Artur',
-        orderID: 'B3T5Y8',
-        orderTime: '14:20, 18.09.2023'
-    },
-    {
-        good: 'Humburger',
-        price: 16,
-        client: 'Bodya',
-        orderID: 'S0S1U7',
-        orderTime: '15:50, 20.09.2023'
-    }
-];
-
 
 // Функція реєстрації користувача
 function regUser(userLogin_fromClient, userPassword_fromClient, userEmail_fromClient) {
@@ -93,28 +75,6 @@ function regUser(userLogin_fromClient, userPassword_fromClient, userEmail_fromCl
     myAccount.email = userEmail_fromClient;
     user.save();
 }
-
-
-// Функція входу в аккаунт
-// async function logUser(userLogin_fromClient, userPassword_fromClient) {
-//     try {
-//         const user = await db.collection('users').findOne({ userLogin_fromClient: userLogin_fromClient });
-
-//         console.log(user)
-//         if (user.userPassword_fromClient === userPassword_fromClient) {
-//             console.log('Successfully login');
-//             return 'Successfully login';
-//         } else {
-//             console.log('False data');
-//             return 'False data';
-//         }
-//     } catch (error) {
-//         console.error('Помилка при пошуку користувача:', error);
-//         // Відправити клієнту - 'Користувача не знайдено'
-//         return 'This user not found';
-//     }
-// }
-
 
 // Функція додавання замовлення
 function addOrder(order_fromClient) {
@@ -170,8 +130,32 @@ app.post('/login-admin', async (req, res) => {
         res.send('Помилка при пошуку користувача');
     }
 });
+    
+app.post('/send-order', async (req, res) => {
+    const orderedItems = req.body;
+    for(let el of orderedItems) {
+        addOrder(el);
+    }
+});
+
+app.get('/get-orders', async (req, res) => {
+    try {
+        const ordersFromDBCursor = await db.collection('orders').find({});
+        const ordersArray = await ordersFromDBCursor.toArray();
+
+        console.log('Отримані дані:', ordersArray); // Додано логування
+
+        res.json(ordersArray);
+    } catch (error) {
+        console.error('Помилка при отриманні замовлень:', error);
+        res.status(500).send('Помилка сервера');
+    }
+});
+
+
+
 
 // Додавання замовлення
 // addOrder(orders_fromClient[1]);
-// Видалення замовле=ння
+// Видалення замовлення
 // deleteOrder('B3T5Y8');
