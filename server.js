@@ -9,6 +9,7 @@ const path = require('path');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const clientPath = path.join('../client', 'dist');
+const { startOptions, backOptions } = require('./bot-options');
 let adminPassword = 'admin';
 
 const PORT = 3000;
@@ -85,7 +86,7 @@ function addOrder(order_fromClient) {
     const order = new Order(order_fromClient);
     order.save();
 
-    bot.sendMessage(1442775189, `Нові замовлення: \n${order.good}`);
+    // bot.sendMessage(1442775189, `Нові замовлення: \n${order.good}`);
 }
 
 
@@ -165,3 +166,122 @@ app.post('/check-adminLog', (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+// telegram bot settings
+
+async function getAllOrders() {
+    try {
+        const orders = await Order.find({});
+        return orders;
+    } catch (error) {
+        console.error('Error getting orders:', error);
+    }
+}
+
+const start = () => {
+    let isCheckingPassword = false;
+    let logged = false;
+
+    bot.on('message', async (msg) => {
+        const chatId = msg.chat.id;
+        const text = msg.text;
+
+        bot.setMyCommands([
+            { command: '/start', description: 'Logging 🍕' },
+            { command: '/aboutorders', description: 'Orders 🍕' },
+            { command: '/show-ordersinfo', description: 'Show orders info 🍕' },
+            { command: '/show-orderlist', description: 'Show orders list 🍕' }
+        ]);        
+
+        if (logged === false) {
+            if (!isCheckingPassword) {
+                if (text === '/start') {
+                    await bot.sendMessage(chatId, 'Greetings from the Telegram bot admin panel of the Bigmac pizzeria! Enter your password ... 😊');
+                    isCheckingPassword = true;  // Start password check
+                } else {
+                    await bot.sendMessage(chatId, 'You entered the wrong command! 😞'); 
+                }
+            } else {
+                if (text === adminPassword) {
+                    await bot.sendMessage(chatId, 'You are logged in! 😃');
+                    isCheckingPassword = false;  // End password check
+                    logged = true;
+                    bot.sendMessage(chatId, 'About orders', startOptions);
+                } else {
+                    await bot.sendMessage(chatId, 'Incorrect password! 😔');
+                }
+            }
+        }
+        
+        if (logged === true) {
+            if(text === '/aboutorders') {
+                bot.sendMessage(chatId, 'About orders ℹ️', startOptions);
+            }
+        }
+    });
+
+    // Handle callback queries
+    bot.on('callback_query', async (msg) => {
+        const data = msg.data;
+        const chatId = msg.message.chat.id;
+
+        if (data === '/show-orderlist') {
+            getAllOrders()
+            .then((data) => {
+                let goodNameArr = [];
+                let optionsArr = [];
+                for(let el of data) {
+                    goodNameArr.push(`${el.good}: ${el.orderID}`);
+                    optionsArr.push([{ text: `🍔 ${el.good}: ${el.orderID} 🍕`, callback_data: `${el.orderID}`}])
+                }
+                optionsArr.push([{ text: 'Back', callback_data: '/back' }]);
+                return bot.sendMessage(chatId, 'All orders:', {
+                    reply_markup: JSON.stringify({
+                        inline_keyboard: optionsArr
+                    })}
+                );    
+            })
+            .catch((error) => {
+                console.error(`Error getting data: ${error}`);
+            })
+        }
+        if (data === '/show-ordersinfo') {
+            getAllOrders()
+            .then((data) => {
+                let latestOrder = data[data.length - 1];
+                let totalPrice = data.reduce((sum, order) => sum + parseFloat(order.price), 0);
+
+                return bot.sendMessage(chatId, `
+                    Total orders price: ${totalPrice} 💰\nOrders count: ${data.length} 🔢\nLatest ordered: ${latestOrder.orderTime} 🕚
+                `, backOptions);
+            })
+            .catch((error) => {
+                console.error(`Error getting data: ${error}`);
+            })
+        }
+        if (data === '/back') {
+            bot.sendMessage(chatId, 'ℹ️ About orders ℹ️', startOptions);
+        }
+        let findOrder = await Order.findOne({ orderID: data });
+
+        if (findOrder) {
+            bot.sendMessage(chatId, `
+                Good: ${findOrder.good} 🍕\nPrice: ${findOrder.price} 💰\nClient: ${findOrder.client} 👤\nOrderID: ${findOrder.orderID} 🔢\nCount: ${findOrder.count} 🛒\nOrder time: ${findOrder.orderTime} ⏰
+            `, {
+                reply_markup: JSON.stringify({
+                    inline_keyboard: [
+                        [{ text: '🏁 Finish 🏁', callback_data: `/finish-order-${findOrder.orderID}` }, { text: '❌ Delete ❌', callback_data: `/finish-order-${findOrder.orderID}` }],
+                        [{ text: 'Back ◀️', callback_data: '/back' }]
+                    ]
+                })
+            });
+        }
+        if (data.slice(0, 13) === '/finish-order') {
+            let orderID = data.slice(14, data.length);
+            deleteOrder(orderID);
+            bot.sendMessage(chatId, '✅ Order completed ✅', backOptions);
+        }
+    });
+};
+
+start();
