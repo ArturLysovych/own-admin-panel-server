@@ -8,8 +8,8 @@ const bot = new TelegramBot(TOKEN, { polling: true });
 const path = require('path');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-let myAccount = { login: '', password: '', email: '' };
 const clientPath = path.join('../client', 'dist');
+let adminPassword = 'admin';
 
 const PORT = 3000;
 
@@ -27,6 +27,10 @@ app.get('/panel', (req, res) => {
 
 app.get('/user', (req, res) => {
     res.sendFile('user.html', { root: clientPath });
+});
+
+app.get('/log-panel', (req, res) => {
+    res.sendFile('logpanel.html', { root: clientPath });
 });
 
 // Підключення до MongoDb
@@ -138,24 +142,26 @@ app.post('/send-order', async (req, res) => {
     }
 });
 
+app.post('/delete-order', (req, res) => {
+    let orderID = Object.keys(req.body)[0];
+    deleteOrder(orderID);
+});
+
 app.get('/get-orders', async (req, res) => {
     try {
-        const ordersFromDBCursor = await db.collection('orders').find({});
-        const ordersArray = await ordersFromDBCursor.toArray();
-
-        console.log('Отримані дані:', ordersArray); // Додано логування
-
+        const ordersArray = await Order.find({});
         res.json(ordersArray);
     } catch (error) {
-        console.error('Помилка при отриманні замовлень:', error);
-        res.status(500).send('Помилка сервера');
+        console.error('Error getting orders:', error);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
-
-
-
-// Додавання замовлення
-// addOrder(orders_fromClient[1]);
-// Видалення замовлення
-// deleteOrder('B3T5Y8');
+app.post('/check-adminLog', (req, res) => {
+    try {
+        res.send(adminPassword);
+    } catch (error) {
+        console.error('Error getting orders:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
