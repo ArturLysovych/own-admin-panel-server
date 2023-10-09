@@ -75,9 +75,6 @@ function regUser(userLogin_fromClient, userPassword_fromClient, userEmail_fromCl
         userPassword_fromClient: userPassword_fromClient,
         userEmail_fromClient: userEmail_fromClient
     });
-    myAccount.login = userLogin_fromClient;
-    myAccount.password = userPassword_fromClient;
-    myAccount.email = userEmail_fromClient;
     user.save();
 }
 
@@ -85,8 +82,6 @@ function regUser(userLogin_fromClient, userPassword_fromClient, userEmail_fromCl
 function addOrder(order_fromClient) {
     const order = new Order(order_fromClient);
     order.save();
-
-    // bot.sendMessage(1442775189, `Нові замовлення: \n${order.good}`);
 }
 
 
@@ -182,31 +177,31 @@ const start = () => {
     let isCheckingPassword = false;
     let logged = false;
 
+    bot.setMyCommands([
+        { command: '/start', description: 'Logging 🍕' },
+        { command: '/aboutorders', description: 'Orders 🍕' },
+        { command: '/show-ordersinfo', description: 'Show orders info 🍕' },
+        { command: '/show-orderlist', description: 'Show orders list 🍕' }
+    ]);
+
     bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
         const text = msg.text;
-
-        bot.setMyCommands([
-            { command: '/start', description: 'Logging 🍕' },
-            { command: '/aboutorders', description: 'Orders 🍕' },
-            { command: '/show-ordersinfo', description: 'Show orders info 🍕' },
-            { command: '/show-orderlist', description: 'Show orders list 🍕' }
-        ]);        
 
         if (logged === false) {
             if (!isCheckingPassword) {
                 if (text === '/start') {
                     await bot.sendMessage(chatId, 'Greetings from the Telegram bot admin panel of the Bigmac pizzeria! Enter your password ... 😊');
-                    isCheckingPassword = true;  // Start password check
+                    isCheckingPassword = true;
                 } else {
                     await bot.sendMessage(chatId, 'You entered the wrong command! 😞'); 
                 }
             } else {
                 if (text === adminPassword) {
                     await bot.sendMessage(chatId, 'You are logged in! 😃');
-                    isCheckingPassword = false;  // End password check
+                    await bot.sendMessage(chatId, 'About orders', startOptions);
+                    isCheckingPassword = false;
                     logged = true;
-                    bot.sendMessage(chatId, 'About orders', startOptions);
                 } else {
                     await bot.sendMessage(chatId, 'Incorrect password! 😔');
                 }
@@ -233,7 +228,7 @@ const start = () => {
                     goodNameArr.push(`${el.good}: ${el.orderID}`);
                     optionsArr.push([{ text: `🍔 ${el.good}: ${el.orderID} 🍕`, callback_data: `${el.orderID}`}])
                 }
-                optionsArr.push([{ text: 'Back', callback_data: '/back' }]);
+                optionsArr.push([{ text: 'Back ◀️', callback_data: '/back' }]);
                 return bot.sendMessage(chatId, 'All orders:', {
                     reply_markup: JSON.stringify({
                         inline_keyboard: optionsArr
@@ -251,7 +246,7 @@ const start = () => {
                 let totalPrice = data.reduce((sum, order) => sum + parseFloat(order.price), 0);
 
                 return bot.sendMessage(chatId, `
-                    Total orders price: ${totalPrice} 💰\nаOrders count: ${data.length} 🔢\nаLatest ordered: ${latestOrder.orderTime} 🕚
+                    Total orders price: ${totalPrice} 💰\nOrders count: ${data.length} 🔢\nLatest ordered: ${latestOrder.orderTime} 🕚
                 `, backOptions);
             })
             .catch((error) => {
