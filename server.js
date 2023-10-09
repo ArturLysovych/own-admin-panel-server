@@ -220,7 +220,6 @@ const start = () => {
         }
     });
 
-    // Handle callback queries
     bot.on('callback_query', async (msg) => {
         const data = msg.data;
         const chatId = msg.message.chat.id;
@@ -252,7 +251,7 @@ const start = () => {
                 let totalPrice = data.reduce((sum, order) => sum + parseFloat(order.price), 0);
 
                 return bot.sendMessage(chatId, `
-                    Total orders price: ${totalPrice} 💰\nOrders count: ${data.length} 🔢\nLatest ordered: ${latestOrder.orderTime} 🕚
+                    Total orders price: ${totalPrice} 💰\nаOrders count: ${data.length} 🔢\nаLatest ordered: ${latestOrder.orderTime} 🕚
                 `, backOptions);
             })
             .catch((error) => {
