@@ -34,6 +34,14 @@ app.get('/log-panel', (req, res) => {
     res.sendFile('logpanel.html', { root: clientPath });
 });
 
+app.get('/404', (req, res) => {
+    res.send('Error 404: this page not found.');
+});
+app.get('*', (req, res) => {
+    res.send('Error 404: this page not found.');
+});
+
+
 // Підключення до MongoDb
 mongoose.connect(`mongodb+srv://arturlisovic:${DB_PASSWORD}@cluster0.hdbgfgy.mongodb.net/?retryWrites=true&w=majority`, {
     useNewUrlParser: true,
